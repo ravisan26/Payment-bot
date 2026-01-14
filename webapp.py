@@ -22,19 +22,24 @@ WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 # Import application after environment is set
 from bot import application
 
+# Global event loop for async operations
+loop = None
+
 
 @flask_app.route("/")
 def home():
     """Health check endpoint."""
-    return "✅ Bot is running!", 200
+    return "Bot is running!", 200
 
 
 @flask_app.route("/webhook", methods=["POST"])
-async def webhook():
-    """Handle incoming webhook updates."""
+def webhook():
+    """Handle incoming webhook updates (sync wrapper)."""
+    global loop
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.process_update(update)
+        # Run async process_update in the existing event loop
+        loop.run_until_complete(application.process_update(update))
         return Response(status=200)
     except Exception as e:
         logger.error(f"Error processing update: {e}")
@@ -53,6 +58,8 @@ async def setup_webhook():
 
 def main():
     """Initialize and start the bot with webhook."""
+    global loop
+    
     # Initialize the application
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
