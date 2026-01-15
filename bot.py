@@ -156,6 +156,14 @@ async def plans_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show channel selection menu."""
+    # Get user's name for personalized greeting
+    if update.callback_query:
+        user = update.callback_query.from_user
+    else:
+        user = update.effective_user
+    
+    name = user.first_name or user.username or "User"
+    
     keyboard = [
         [InlineKeyboardButton("HASEENA LINK (MAIN)", callback_data="channel_1")],
         [InlineKeyboardButton("HASEENA(2.0)", callback_data="channel_2")],
@@ -164,16 +172,19 @@ async def show_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Contact Admin", url=f"https://t.me/{config.ADMIN_USERNAME}")],
     ]
     
-    text = """
-SELECT A CHANNEL
---------------------
-Choose your preferred channel:
+    text = f"""👋 Hello {name}
 
-HASEENA LINK (MAIN) - Rs.299 to Rs.650
-HASEENA(2.0) - Rs.149 to Rs.320
-SHEEP NEWS - Rs.149 to Rs.320
-All-in-One - Rs.699 to Rs.899 (Best Value!)
-"""
+🎖️ Want Premium?
+Choose a Plan below:
+
+• 💳 Pay with UPI (Instant activation)
+• 📁 Pay with Binance (instant)
+• 🔖 Pay with PayPal 
+• 📥 Any other Payment Method we accept worldwide
+
+———————————————————
+
+🔖 Choose Your Preferred Channel:"""
     
     if update.callback_query:
         await update.callback_query.answer()
