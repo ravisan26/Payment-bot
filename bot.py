@@ -489,18 +489,18 @@ async def admin_handle_user_id(update: Update, context: ContextTypes.DEFAULT_TYP
     # Check if it's a forwarded message - extract user ID
     user_id = None
     
-    # Method 1: Check forward_from (works when user has privacy disabled)
-    if update.message.forward_from:
-        user_id = update.message.forward_from.id
-        logger.info(f"Got user ID from forward_from: {user_id}")
-    
-    # Method 2: Check forward_origin (newer Telegram API)
-    elif hasattr(update.message, 'forward_origin') and update.message.forward_origin:
+    # Method 1: Check forward_origin (newer Telegram API - PTB v20+)
+    if hasattr(update.message, 'forward_origin') and update.message.forward_origin:
         origin = update.message.forward_origin
         # MessageOriginUser type has sender_user attribute
         if hasattr(origin, 'sender_user') and origin.sender_user:
             user_id = origin.sender_user.id
             logger.info(f"Got user ID from forward_origin: {user_id}")
+    
+    # Method 2: Check forward_from (legacy - older PTB versions, user has privacy disabled)
+    if user_id is None and hasattr(update.message, 'forward_from') and update.message.forward_from:
+        user_id = update.message.forward_from.id
+        logger.info(f"Got user ID from forward_from: {user_id}")
     
     # Method 3: Try to parse as user ID from text
     if user_id is None:
