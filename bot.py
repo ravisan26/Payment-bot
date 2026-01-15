@@ -1,4 +1,4 @@
-﻿import io
+import io
 import logging
 import random
 import string
@@ -489,18 +489,52 @@ async def admin_handle_user_id(update: Update, context: ContextTypes.DEFAULT_TYP
     # Check if it's a forwarded message - extract user ID
     user_id = None
     
+    # Method 1: Check forward_from (works when user has privacy disabled)
     if update.message.forward_from:
         user_id = update.message.forward_from.id
-    else:
-        # Try to parse as user ID
+        logger.info(f"Got user ID from forward_from: {user_id}")
+    
+    # Method 2: Check forward_origin (newer Telegram API)
+    elif hasattr(update.message, 'forward_origin') and update.message.forward_origin:
+        origin = update.message.forward_origin
+        # MessageOriginUser type has sender_user attribute
+        if hasattr(origin, 'sender_user') and origin.sender_user:
+            user_id = origin.sender_user.id
+            logger.info(f"Got user ID from forward_origin: {user_id}")
+    
+    # Method 3: Try to parse as user ID from text
+    if user_id is None:
         try:
-            user_id = int(update.message.text.strip())
-        except ValueError:
-            await update.message.reply_text(
-                "Invalid User ID!\n\n"
-                "Please send a valid numeric User ID or forward a message from the user."
-            )
-            return
+            # Try to extract user ID from the message text
+            text = update.message.text or update.message.caption or ""
+            text = text.strip()
+            
+            # Handle cases where text might contain other content
+            # Look for a standalone number
+            if text.isdigit():
+                user_id = int(text)
+                logger.info(f"Got user ID from text: {user_id}")
+            else:
+                # Try to find a user ID in the text (e.g., "User ID: 123456")
+                import re
+                match = re.search(r'\b(\d{6,15})\b', text)
+                if match:
+                    user_id = int(match.group(1))
+                    logger.info(f"Got user ID from regex match: {user_id}")
+    
+        except (ValueError, AttributeError):
+            pass
+    
+    # If still no user ID, show error
+    if user_id is None:
+        await update.message.reply_text(
+            "Could not extract User ID!\n\n"
+            "Possible reasons:\n"
+            "- User has privacy settings enabled (forward won't work)\n"
+            "- Invalid User ID format\n\n"
+            "Please ask the user for their ID (they can get it from @userinfobot) and send it directly."
+        )
+        return
     
     # Get stored plan info
     days = context.user_data.get("admin_add_days")
