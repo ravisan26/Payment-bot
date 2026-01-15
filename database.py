@@ -657,8 +657,157 @@ def refresh_config_plans():
                 config.ALL_IN_ONE_PLANS[plan_id] = plan
 
 
+# ==============================================
+# DYNAMIC SETTINGS MANAGEMENT
+# ==============================================
+
+def init_settings_table():
+    """Initialize the settings table for dynamic settings management."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if USE_POSTGRES:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+    
+    conn.commit()
+    conn.close()
+
+
+def populate_default_settings():
+    """Populate settings table with default settings from config if empty."""
+    import config
+    
+    default_settings = {
+        'upi_id': config.UPI_ID,
+        'binance_id': config.BINANCE_ID,
+        'paypal_email': config.PAYPAL_EMAIL,
+        'admin_username': config.ADMIN_USERNAME,
+        'tutorial_link': config.TUTORIAL_LINK,
+        'channel_1_name': 'HASEENA LINK (MAIN)',
+        'channel_2_name': 'HASEENA(2.0)',
+        'channel_3_name': 'SHEEP NEWS',
+    }
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    for key, value in default_settings.items():
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO settings (key, value)
+                VALUES (%s, %s)
+                ON CONFLICT(key) DO NOTHING
+            """, (key, value))
+        else:
+            cursor.execute("""
+                INSERT INTO settings (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO NOTHING
+            """, (key, value))
+    
+    conn.commit()
+    conn.close()
+
+
+def get_setting(key: str, default: str = None) -> str:
+    """Get a setting value by key."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if USE_POSTGRES:
+        cursor.execute("SELECT value FROM settings WHERE key = %s", (key,))
+    else:
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return row[0]
+    return default
+
+
+def set_setting(key: str, value: str) -> bool:
+    """Set a setting value."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if USE_POSTGRES:
+        cursor.execute("""
+            INSERT INTO settings (key, value)
+            VALUES (%s, %s)
+            ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value
+        """, (key, value))
+    else:
+        cursor.execute("""
+            INSERT INTO settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (key, value))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_all_settings() -> dict:
+    """Get all settings as a dictionary."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT key, value FROM settings ORDER BY key")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return {row[0]: row[1] for row in rows}
+
+
+def refresh_config_settings():
+    """Refresh the config module's settings from database."""
+    import config
+    
+    settings = get_all_settings()
+    
+    if settings:
+        # Update config values
+        if 'upi_id' in settings:
+            config.UPI_ID = settings['upi_id']
+        if 'binance_id' in settings:
+            config.BINANCE_ID = settings['binance_id']
+        if 'paypal_email' in settings:
+            config.PAYPAL_EMAIL = settings['paypal_email']
+        if 'admin_username' in settings:
+            config.ADMIN_USERNAME = settings['admin_username']
+        if 'tutorial_link' in settings:
+            config.TUTORIAL_LINK = settings['tutorial_link']
+        
+        # Update channel name map
+        if 'channel_1_name' in settings:
+            config.CHANNEL_NAME_MAP['ch1'] = settings['channel_1_name']
+        if 'channel_2_name' in settings:
+            config.CHANNEL_NAME_MAP['ch2'] = settings['channel_2_name']
+        if 'channel_3_name' in settings:
+            config.CHANNEL_NAME_MAP['ch3'] = settings['channel_3_name']
+
+
 # Initialize database on import
 init_db()
 init_plans_table()
 populate_default_plans()
 refresh_config_plans()
+init_settings_table()
+populate_default_settings()
+refresh_config_settings()
+
