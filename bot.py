@@ -58,6 +58,11 @@ def is_admin(user_id: int) -> bool:
     return user_id in config.ADMIN_IDS
 
 
+def is_checker(user_id: int) -> bool:
+    """Check if user can use /checkuser command (admins + checkers)."""
+    return user_id in config.ADMIN_IDS or user_id in config.CHECKER_IDS
+
+
 # ==============================================
 # USER HANDLERS
 # ==============================================
@@ -667,8 +672,8 @@ async def remove_premium_command(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def check_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /checkuser command - Admin only."""
-    if not is_admin(update.effective_user.id):
+    """Handle /checkuser command - Admin and Checker users."""
+    if not is_checker(update.effective_user.id):
         await update.message.reply_text("You are not authorized.")
         return
     
@@ -798,6 +803,219 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 
+async def view_plans_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /viewplans command - Admin only. View all current plans."""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("You are not authorized.")
+        return
+    
+    plans = db.get_all_plans()
+    
+    if not plans:
+        await update.message.reply_text("No plans found.")
+        return
+    
+    # Group plans by channel
+    ch1_plans = []
+    ch2_plans = []
+    ch3_plans = []
+    all_plans = []
+    
+    for plan_id, plan in sorted(plans.items()):
+        line = f"`{plan_id}` - {plan['label']} - Rs.{plan['price']} ({plan['days']} days)"
+        if plan_id.startswith('ch1_'):
+            ch1_plans.append(line)
+        elif plan_id.startswith('ch2_'):
+            ch2_plans.append(line)
+        elif plan_id.startswith('ch3_'):
+            ch3_plans.append(line)
+        elif plan_id.startswith('all_'):
+            all_plans.append(line)
+    
+    text = "**ALL PLANS**\n--------------------\n\n"
+    
+    if ch1_plans:
+        text += "**HASEENA LINK (MAIN)**\n" + "\n".join(ch1_plans) + "\n\n"
+    if ch2_plans:
+        text += "**HASEENA(2.0)**\n" + "\n".join(ch2_plans) + "\n\n"
+    if ch3_plans:
+        text += "**SHEEP NEWS**\n" + "\n".join(ch3_plans) + "\n\n"
+    if all_plans:
+        text += "**ALL IN ONE**\n" + "\n".join(all_plans) + "\n\n"
+    
+    text += "--------------------\n"
+    text += "To update: `/setplan <plan_id> <days> <price>`\n"
+    text += "Example: `/setplan ch1_7_days 7 299`"
+    
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
+async def set_plan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /setplan command - Admin only. Update a plan's days and price."""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("You are not authorized.")
+        return
+    
+    if len(context.args) < 3:
+        await update.message.reply_text(
+            "Usage: /setplan <plan_id> <days> <price>\n\n"
+            "Example: /setplan ch1_7_days 7 299\n\n"
+            "Use /viewplans to see all plan IDs."
+        )
+        return
+    
+    plan_id = context.args[0]
+    
+    try:
+        days = int(context.args[1])
+        price = int(context.args[2])
+    except ValueError:
+        await update.message.reply_text("Days and price must be numbers.")
+        return
+    
+    if days <= 0 or price <= 0:
+        await update.message.reply_text("Days and price must be positive numbers.")
+        return
+    
+    # Check if plan exists
+    old_plan = db.get_plan(plan_id)
+    if not old_plan:
+        await update.message.reply_text(
+            f"Plan `{plan_id}` not found.\n\n"
+            "Use /viewplans to see all plan IDs.",
+            parse_mode="Markdown"
+        )
+        return
+    
+    # Update the plan
+    success = db.update_plan(plan_id, days=days, price=price)
+    
+    if success:
+        # Refresh config to use new values
+        db.refresh_config_plans()
+        
+        await update.message.reply_text(
+            f"**PLAN UPDATED**\n"
+            f"--------------------\n"
+            f"Plan ID: `{plan_id}`\n"
+            f"Channel: {old_plan['channel']}\n\n"
+            f"**OLD:**\n"
+            f"Days: {old_plan['days']}\n"
+            f"Price: Rs.{old_plan['price']}\n\n"
+            f"**NEW:**\n"
+            f"Days: {days}\n"
+            f"Price: Rs.{price}",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text("Failed to update plan.")
+
+
+async def view_settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /viewsettings command - Admin only. View all current settings."""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("You are not authorized.")
+        return
+    
+    settings = db.get_all_settings()
+    
+    if not settings:
+        await update.message.reply_text("No settings found.")
+        return
+    
+    # Format settings nicely
+    text = "**BOT SETTINGS**\n--------------------\n\n"
+    
+    # Group by category
+    payment_keys = ['upi_id', 'binance_id', 'paypal_email']
+    admin_keys = ['admin_username', 'tutorial_link']
+    channel_keys = ['channel_1_name', 'channel_2_name', 'channel_3_name']
+    
+    text += "**Payment Settings**\n"
+    for key in payment_keys:
+        if key in settings:
+            text += f"`{key}`: {settings[key]}\n"
+    
+    text += "\n**Admin Settings**\n"
+    for key in admin_keys:
+        if key in settings:
+            text += f"`{key}`: {settings[key]}\n"
+    
+    text += "\n**Channel Names**\n"
+    for key in channel_keys:
+        if key in settings:
+            text += f"`{key}`: {settings[key]}\n"
+    
+    text += "\n--------------------\n"
+    text += "To update: `/setsetting <key> <value>`\n"
+    text += "Example: `/setsetting upi_id yourname@upi`"
+    
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
+async def set_setting_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /setsetting command - Admin only. Update a setting value."""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("You are not authorized.")
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "Usage: /setsetting <key> <value>\n\n"
+            "Available keys:\n"
+            "- `upi_id` - UPI payment ID\n"
+            "- `binance_id` - Binance Pay ID\n"
+            "- `paypal_email` - PayPal email\n"
+            "- `admin_username` - Admin username\n"
+            "- `tutorial_link` - Tutorial URL\n"
+            "- `channel_1_name` - Channel 1 name\n"
+            "- `channel_2_name` - Channel 2 name\n"
+            "- `channel_3_name` - Channel 3 name\n\n"
+            "Example: `/setsetting upi_id yourname@paytm`",
+            parse_mode="Markdown"
+        )
+        return
+    
+    key = context.args[0].lower()
+    value = " ".join(context.args[1:])  # Allow spaces in value
+    
+    # Valid keys
+    valid_keys = [
+        'upi_id', 'binance_id', 'paypal_email', 
+        'admin_username', 'tutorial_link',
+        'channel_1_name', 'channel_2_name', 'channel_3_name'
+    ]
+    
+    if key not in valid_keys:
+        await update.message.reply_text(
+            f"Invalid key `{key}`.\n\n"
+            f"Valid keys: {', '.join(valid_keys)}",
+            parse_mode="Markdown"
+        )
+        return
+    
+    # Get old value
+    old_value = db.get_setting(key, "Not set")
+    
+    # Update the setting
+    success = db.set_setting(key, value)
+    
+    if success:
+        # Refresh config to use new values
+        db.refresh_config_settings()
+        
+        await update.message.reply_text(
+            f"**SETTING UPDATED**\n"
+            f"--------------------\n"
+            f"Key: `{key}`\n\n"
+            f"**OLD:** {old_value}\n"
+            f"**NEW:** {value}",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text("Failed to update setting.")
+
+
 # ==============================================
 # APPLICATION SETUP
 # ==============================================
@@ -819,6 +1037,10 @@ application.add_handler(CommandHandler("removepremium", remove_premium_command))
 application.add_handler(CommandHandler("checkuser", check_user_command))
 application.add_handler(CommandHandler("stats", stats_command))
 application.add_handler(CommandHandler("broadcast", broadcast_command))
+application.add_handler(CommandHandler("viewplans", view_plans_command))
+application.add_handler(CommandHandler("setplan", set_plan_command))
+application.add_handler(CommandHandler("viewsettings", view_settings_command))
+application.add_handler(CommandHandler("setsetting", set_setting_command))
 
 # Admin message handler for user ID input (must come before channel post handler)
 application.add_handler(MessageHandler(
