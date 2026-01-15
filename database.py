@@ -463,5 +463,202 @@ def get_stats() -> dict:
     }
 
 
+# ==============================================
+# DYNAMIC PLANS MANAGEMENT
+# ==============================================
+
+def init_plans_table():
+    """Initialize the plans table for dynamic plan management."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if USE_POSTGRES:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS plans (
+                plan_id TEXT PRIMARY KEY,
+                days INTEGER NOT NULL,
+                price INTEGER NOT NULL,
+                label TEXT NOT NULL,
+                channel TEXT NOT NULL
+            )
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS plans (
+                plan_id TEXT PRIMARY KEY,
+                days INTEGER NOT NULL,
+                price INTEGER NOT NULL,
+                label TEXT NOT NULL,
+                channel TEXT NOT NULL
+            )
+        """)
+    
+    conn.commit()
+    conn.close()
+
+
+def populate_default_plans():
+    """Populate plans table with default plans from config if empty."""
+    import config
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Check if plans table is empty
+    cursor.execute("SELECT COUNT(*) FROM plans")
+    count = cursor.fetchone()[0]
+    
+    if count == 0:
+        # Insert default plans from config
+        for plan_id, plan in config.PLANS.items():
+            if USE_POSTGRES:
+                cursor.execute("""
+                    INSERT INTO plans (plan_id, days, price, label, channel)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT(plan_id) DO NOTHING
+                """, (plan_id, plan['days'], plan['price'], plan['label'], plan['channel']))
+            else:
+                cursor.execute("""
+                    INSERT INTO plans (plan_id, days, price, label, channel)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(plan_id) DO NOTHING
+                """, (plan_id, plan['days'], plan['price'], plan['label'], plan['channel']))
+        
+        conn.commit()
+    
+    conn.close()
+
+
+def get_all_plans() -> dict:
+    """Get all plans from database."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT plan_id, days, price, label, channel FROM plans ORDER BY plan_id")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    plans = {}
+    for row in rows:
+        plans[row[0]] = {
+            'days': row[1],
+            'price': row[2],
+            'label': row[3],
+            'channel': row[4]
+        }
+    
+    return plans
+
+
+def update_plan(plan_id: str, days: int = None, price: int = None, label: str = None) -> bool:
+    """Update a plan's days, price, or label.
+    
+    Args:
+        plan_id: The plan ID to update
+        days: New number of days (optional)
+        price: New price (optional)
+        label: New label (optional)
+    
+    Returns:
+        True if plan was updated, False if plan not found
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Check if plan exists
+    if USE_POSTGRES:
+        cursor.execute("SELECT plan_id FROM plans WHERE plan_id = %s", (plan_id,))
+    else:
+        cursor.execute("SELECT plan_id FROM plans WHERE plan_id = ?", (plan_id,))
+    
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    
+    # Build update query
+    updates = []
+    params = []
+    
+    if days is not None:
+        updates.append("days = %s" if USE_POSTGRES else "days = ?")
+        params.append(days)
+    
+    if price is not None:
+        updates.append("price = %s" if USE_POSTGRES else "price = ?")
+        params.append(price)
+    
+    if label is not None:
+        updates.append("label = %s" if USE_POSTGRES else "label = ?")
+        params.append(label)
+    
+    if not updates:
+        conn.close()
+        return True
+    
+    params.append(plan_id)
+    
+    query = f"UPDATE plans SET {', '.join(updates)} WHERE plan_id = {'%s' if USE_POSTGRES else '?'}"
+    cursor.execute(query, params)
+    
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_plan(plan_id: str) -> dict:
+    """Get a single plan by ID."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if USE_POSTGRES:
+        cursor.execute("SELECT plan_id, days, price, label, channel FROM plans WHERE plan_id = %s", (plan_id,))
+    else:
+        cursor.execute("SELECT plan_id, days, price, label, channel FROM plans WHERE plan_id = ?", (plan_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'plan_id': row[0],
+            'days': row[1],
+            'price': row[2],
+            'label': row[3],
+            'channel': row[4]
+        }
+    return None
+
+
+def refresh_config_plans():
+    """Refresh the config module's PLANS from database."""
+    import config
+    
+    db_plans = get_all_plans()
+    
+    if db_plans:
+        # Update the main PLANS dict
+        config.PLANS.clear()
+        config.PLANS.update(db_plans)
+        
+        # Update channel-specific plan dicts
+        config.CHANNEL_1_PLANS.clear()
+        config.CHANNEL_2_PLANS.clear()
+        config.CHANNEL_3_PLANS.clear()
+        config.ALL_IN_ONE_PLANS.clear()
+        
+        for plan_id, plan in db_plans.items():
+            if plan_id.startswith('ch1_'):
+                config.CHANNEL_1_PLANS[plan_id] = plan
+            elif plan_id.startswith('ch2_'):
+                config.CHANNEL_2_PLANS[plan_id] = plan
+            elif plan_id.startswith('ch3_'):
+                config.CHANNEL_3_PLANS[plan_id] = plan
+            elif plan_id.startswith('all_'):
+                config.ALL_IN_ONE_PLANS[plan_id] = plan
+
+
 # Initialize database on import
 init_db()
+init_plans_table()
+populate_default_plans()
+refresh_config_plans()
