@@ -1,4 +1,6 @@
 # ==============================================
+# TELEGRAM FILE STORE BOT - CONFIGURATION
+# ==============================================
 import os
 
 # Bot Token from @BotFather
@@ -13,14 +15,20 @@ BINANCE_ID = os.environ.get("BINANCE_ID", "your_binance_pay_id")
 # PayPal Email
 PAYPAL_EMAIL = os.environ.get("PAYPAL_EMAIL", "your_paypal@email.com")
 
+# Your Telegram User ID (get from @userinfobot)
 # For multiple admins: "123,456,789"
 admin_ids_str = os.environ.get("ADMIN_IDS", "123456789")
 ADMIN_IDS = [int(x.strip()) for x in admin_ids_str.split(",")]
 
-# Checker IDs - users who can use /checkuser command
+# Checker IDs - Users who can ONLY use /checkuser command (subscription check)
+# Separate from full admin access
 checker_ids_str = os.environ.get("CHECKER_IDS", "")
 CHECKER_IDS = [int(x.strip()) for x in checker_ids_str.split(",") if x.strip()]
 
+# ==============================================
+# CHANNEL IDs (Bot must be admin in all channels)
+# Format: -100xxxxxxxxxx
+# ==============================================
 # Channel 1 - HASEENA LINK (MAIN)
 CHANNEL_1_ID = int(os.environ.get("CHANNEL_1_ID", "-1001234567890"))
 
@@ -54,15 +62,27 @@ ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "yourusername")
 # Tutorial link
 TUTORIAL_LINK = os.environ.get("TUTORIAL_LINK", "https://youtube.com/your-tutorial")
 
+# ==============================================
+# DATABASE - PostgreSQL (Neon)
+# ==============================================
 # Connection string format: postgresql://user:password@host/database?sslmode=require
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 # Fallback to SQLite for local development
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "database.db")
 
-# Premium image URL (shown when viewing plans)
-# You can set this to a direct image URL or a Telegram file_id
+# ==============================================
+# IMAGES - Set image URLs or Telegram file_ids
+# ==============================================
+# Start message image - shown when user sends /start
+START_IMAGE_URL = os.environ.get("START_IMAGE_URL", "")
+
+# Premium/Plans image - shown when user clicks "Get Premium" and selects a channel
 PREMIUM_IMAGE_URL = os.environ.get("PREMIUM_IMAGE_URL", "")
+
+# ==============================================
+# PREMIUM PLANS - CHANNEL BASED
+# ==============================================
 
 # Channel 1 Plans - HASEENA MAIN - UPDATED PRICING
 CHANNEL_1_PLANS = {
@@ -82,10 +102,10 @@ CHANNEL_2_PLANS = {
 
 # Channel 3 Plans - SHEEP NEWS - UPDATED PRICING
 CHANNEL_3_PLANS = {
-    "ch3_7_days": {"days": 7, "price": 199, "label": "7 Days", "channel": "SHEEP NEWS"},
-    "ch3_15_days": {"days": 15, "price": 249, "label": "15 Days", "channel": "SHEEP NEWS"},
-    "ch3_30_days": {"days": 30, "price": 349, "label": "1 Month", "channel": "SHEEP NEWS"},
-    "ch3_90_days": {"days": 90, "price": 799, "label": "3 Months", "channel": "SHEEP NEWS"},
+    "ch3_7_days": {"days": 7, "price": 199, "label": "7 Days", "channel": "SHEEP"},
+    "ch3_15_days": {"days": 15, "price": 249, "label": "15 Days", "channel": "SHEEP"},
+    "ch3_30_days": {"days": 30, "price": 349, "label": "1 Month", "channel": "SHEEP"},
+    "ch3_90_days": {"days": 90, "price": 799, "label": "3 Months", "channel": "SHEEP"},
 }
 
 # All-in-One Discount Plans (All 3 Channels) - UPDATED PRICING
@@ -104,6 +124,8 @@ PLANS = {
     **ALL_IN_ONE_PLANS,
 }
 
+# ==============================================
+# MESSAGES
 # ==============================================
 START_MESSAGE = """
 Hi {name}
@@ -127,27 +149,23 @@ You have full access to your subscribed channels.
 """
 
 PAYMENT_MESSAGE = """
-PREMIUM PAYMENT
+✦ 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗣𝗔𝗬𝗠𝗘𝗡𝗧
 
-Channel: {channel}
-Amount: Rs.{amount}
-Validity: {validity}
---------------------
-Scan QR with any UPI app to pay.
+❐ Channel: {channel}
+≡ Validity: {validity}
+≡ Amount: Rs.{amount}
+❐ Transaction ID: `{trx_id}`
 
-Or tap here to pay directly.
+────────────────────
+≡ Contact Admin to Complete Payment.
 
-AFTER PAYMENT:
-1. Take a screenshot of payment
-2. Click "Verify Payment" button
-3. Send screenshot to admin
-4. Wait for verification
+✦ Premium will be added automatically if paid within 5 minutes...
 """
 
 NOT_PREMIUM_MESSAGE = """
 ♻️ PREMIUM ♻️
 
-💎 ᴛʜɪs ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴏɴʟʏ.
+💎 ᴛʜɪs mega ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴏɴʟʏ.
 
 •  Pay and activate premium to get instant access.
 
