@@ -529,6 +529,38 @@ def populate_default_plans():
     conn.close()
 
 
+def reset_all_plans():
+    """Delete all plans and repopulate from config. Use this to sync plans from config.py."""
+    import config
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Delete all existing plans
+    cursor.execute("DELETE FROM plans")
+    
+    # Insert all plans from config
+    for plan_id, plan in config.PLANS.items():
+        if USE_POSTGRES:
+            cursor.execute("""
+                INSERT INTO plans (plan_id, days, price, label, channel)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (plan_id, plan['days'], plan['price'], plan['label'], plan['channel']))
+        else:
+            cursor.execute("""
+                INSERT INTO plans (plan_id, days, price, label, channel)
+                VALUES (?, ?, ?, ?, ?)
+            """, (plan_id, plan['days'], plan['price'], plan['label'], plan['channel']))
+    
+    conn.commit()
+    conn.close()
+    
+    # Refresh config with new plans
+    refresh_config_plans()
+    
+    return len(config.PLANS)
+
+
 def get_all_plans() -> dict:
     """Get all plans from database."""
     conn = get_connection()
