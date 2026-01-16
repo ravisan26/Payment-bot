@@ -837,13 +837,22 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
     """Handle new posts in the file channels - generate shareable link with channel code."""
     chat_id = update.channel_post.chat.id
     
+    # Ignore messages from the bot itself to prevent infinite loop
+    bot_info = await context.bot.get_me()
+    if update.channel_post.from_user and update.channel_post.from_user.id == bot_info.id:
+        return
+    
+    # Also ignore text-only messages (likely the bot's own link messages)
+    if update.channel_post.text and not update.channel_post.photo and not update.channel_post.video and not update.channel_post.document:
+        return
+    
     # Determine which channel this post is from
     channel_code = config.CHANNEL_ID_MAP.get(chat_id)
     if not channel_code:
         return  # Not a monitored channel
     
     message_id = update.channel_post.message_id
-    bot_username = (await context.bot.get_me()).username
+    bot_username = bot_info.username
     
     # Include channel code in the start parameter for channel-specific access
     share_link = f"https://t.me/{bot_username}?start={channel_code}_{message_id}"
@@ -1070,6 +1079,60 @@ async def set_setting_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 # ==============================================
+# GET FILE ID COMMAND - For getting image file_ids
+# ==============================================
+
+async def getfileid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /getfileid command - Admin only. Enable file_id capture mode."""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("Not authorized.")
+        return
+    
+    context.user_data["awaiting_file_id"] = True
+    await update.message.reply_text(
+        "**FILE ID CAPTURE MODE**\n"
+        "--------------------\n"
+        "Now send me any photo and I will give you its file_id.\n\n"
+        "Use this file_id in Render environment variables:\n"
+        "- `START_IMAGE_URL` for /start message\n"
+        "- `PREMIUM_IMAGE_URL` for plans page\n\n"
+        "Send /cancel to exit this mode.",
+        parse_mode="Markdown"
+    )
+
+
+async def handle_photo_for_fileid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle photo messages to extract file_id."""
+    if not is_admin(update.effective_user.id):
+        return
+    
+    if not context.user_data.get("awaiting_file_id"):
+        return
+    
+    # Get the largest photo (best quality)
+    if update.message.photo:
+        photo = update.message.photo[-1]  # Last one is largest
+        file_id = photo.file_id
+        
+        await update.message.reply_text(
+            f"**FILE ID CAPTURED!**\n"
+            f"--------------------\n\n"
+            f"**Use this in Render:**\n"
+            f"`{file_id}`\n\n"
+            f"--------------------\n"
+            f"Send another photo or /cancel to exit.",
+            parse_mode="Markdown"
+        )
+
+
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /cancel command."""
+    context.user_data.pop("awaiting_file_id", None)
+    context.user_data.pop("awaiting_user_id", None)
+    await update.message.reply_text("Operation cancelled.")
+
+
+# ==============================================
 # APPLICATION SETUP
 # ==============================================
 
@@ -1082,6 +1145,7 @@ application = Application.builder().token(config.BOT_TOKEN).build()
 # User handlers
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(CommandHandler("plans", plans_command))
+application.add_handler(CommandHandler("cancel", cancel_command))
 application.add_handler(CallbackQueryHandler(callback_handler))
 
 # Admin handlers
@@ -1094,6 +1158,13 @@ application.add_handler(CommandHandler("viewplans", view_plans_command))
 application.add_handler(CommandHandler("setplan", set_plan_command))
 application.add_handler(CommandHandler("viewsettings", view_settings_command))
 application.add_handler(CommandHandler("setsetting", set_setting_command))
+application.add_handler(CommandHandler("getfileid", getfileid_command))
+
+# Photo handler for file_id capture (must come before other handlers)
+application.add_handler(MessageHandler(
+    filters.PHOTO & filters.ChatType.PRIVATE,
+    handle_photo_for_fileid
+))
 
 # Admin message handler for user ID input (must come before channel post handler)
 application.add_handler(MessageHandler(
