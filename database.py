@@ -534,7 +534,7 @@ def get_all_plans() -> dict:
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT plan_id, days, price, label, channel FROM plans ORDER BY plan_id")
+    cursor.execute("SELECT plan_id, days, price, label, channel FROM plans ORDER BY channel, days")
     rows = cursor.fetchall()
     conn.close()
     
