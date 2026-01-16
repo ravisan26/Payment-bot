@@ -973,6 +973,25 @@ async def set_plan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Failed to update plan.")
 
 
+async def reset_plans_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /resetplans command - Admin only. Reset all plans from config.py."""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("You are not authorized.")
+        return
+    
+    # Reset all plans
+    count = db.reset_all_plans()
+    
+    await update.message.reply_text(
+        f"**PLANS RESET**\n"
+        f"--------------------\n"
+        f"Deleted all old plans and loaded {count} plans from config.\n\n"
+        f"Use /viewplans to see the new plans.",
+        parse_mode="Markdown"
+    )
+
+
+
 async def view_settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /viewsettings command - Admin only. View all current settings."""
     if not is_admin(update.effective_user.id):
@@ -1156,6 +1175,7 @@ application.add_handler(CommandHandler("stats", stats_command))
 application.add_handler(CommandHandler("broadcast", broadcast_command))
 application.add_handler(CommandHandler("viewplans", view_plans_command))
 application.add_handler(CommandHandler("setplan", set_plan_command))
+application.add_handler(CommandHandler("resetplans", reset_plans_command))
 application.add_handler(CommandHandler("viewsettings", view_settings_command))
 application.add_handler(CommandHandler("setsetting", set_setting_command))
 application.add_handler(CommandHandler("getfileid", getfileid_command))
