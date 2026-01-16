@@ -1,5 +1,3 @@
-﻿# ==============================================
-# TELEGRAM FILE STORE BOT - CONFIGURATION
 # ==============================================
 import os
 
@@ -15,15 +13,14 @@ BINANCE_ID = os.environ.get("BINANCE_ID", "your_binance_pay_id")
 # PayPal Email
 PAYPAL_EMAIL = os.environ.get("PAYPAL_EMAIL", "your_paypal@email.com")
 
-# Your Telegram User ID (get from @userinfobot)
 # For multiple admins: "123,456,789"
 admin_ids_str = os.environ.get("ADMIN_IDS", "123456789")
 ADMIN_IDS = [int(x.strip()) for x in admin_ids_str.split(",")]
 
-# ==============================================
-# CHANNEL IDs (Bot must be admin in all channels)
-# Format: -100xxxxxxxxxx
-# ==============================================
+# Checker IDs - users who can use /checkuser command
+checker_ids_str = os.environ.get("CHECKER_IDS", "")
+CHECKER_IDS = [int(x.strip()) for x in checker_ids_str.split(",") if x.strip()]
+
 # Channel 1 - HASEENA LINK (MAIN)
 CHANNEL_1_ID = int(os.environ.get("CHANNEL_1_ID", "-1001234567890"))
 
@@ -45,9 +42,9 @@ CHANNEL_ID_MAP = {
 
 # Channel code to name mapping
 CHANNEL_NAME_MAP = {
-    'ch1': 'HASEENA LINK (MAIN)',
-    'ch2': 'HASEENA(2.0)',
-    'ch3': 'SHEEP NEWS',
+    'ch1': 'HASEENA MAIN',
+    'ch2': 'HASEENA 2.0',
+    'ch3': 'SHEEP',
     'all': 'ALL CHANNELS'
 }
 
@@ -57,44 +54,46 @@ ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "yourusername")
 # Tutorial link
 TUTORIAL_LINK = os.environ.get("TUTORIAL_LINK", "https://youtube.com/your-tutorial")
 
-# ==============================================
-# DATABASE - PostgreSQL (Neon)
-# ==============================================
 # Connection string format: postgresql://user:password@host/database?sslmode=require
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 # Fallback to SQLite for local development
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "database.db")
 
-# ==============================================
-# PREMIUM PLANS - CHANNEL BASED
-# ==============================================
+# Premium image URL (shown when viewing plans)
+# You can set this to a direct image URL or a Telegram file_id
+PREMIUM_IMAGE_URL = os.environ.get("PREMIUM_IMAGE_URL", "")
 
-# Channel 1 Plans - HASEENA LINK (MAIN)
+# Channel 1 Plans - HASEENA MAIN - UPDATED PRICING
 CHANNEL_1_PLANS = {
-    "ch1_7_days": {"days": 7, "price": 299, "label": "7 Days", "channel": "HASEENA LINK (MAIN)"},
-    "ch1_15_days": {"days": 15, "price": 500, "label": "15 Days", "channel": "HASEENA LINK (MAIN)"},
-    "ch1_30_days": {"days": 30, "price": 650, "label": "30 Days", "channel": "HASEENA LINK (MAIN)"},
+    "ch1_7_days": {"days": 7, "price": 299, "label": "7 Days", "channel": "HASEENA MAIN"},
+    "ch1_15_days": {"days": 15, "price": 399, "label": "15 Days", "channel": "HASEENA MAIN"},
+    "ch1_30_days": {"days": 30, "price": 499, "label": "1 Month", "channel": "HASEENA MAIN"},
+    "ch1_90_days": {"days": 90, "price": 999, "label": "3 Months", "channel": "HASEENA MAIN"},
 }
 
-# Channel 2 Plans - HASEENA(2.0)
+# Channel 2 Plans - HASEENA(2.0) - UPDATED PRICING
 CHANNEL_2_PLANS = {
-    "ch2_7_days": {"days": 7, "price": 149, "label": "7 Days", "channel": "HASEENA(2.0)"},
-    "ch2_15_days": {"days": 15, "price": 249, "label": "15 Days", "channel": "HASEENA(2.0)"},
-    "ch2_30_days": {"days": 30, "price": 320, "label": "1 Month", "channel": "HASEENA(2.0)"},
+    "ch2_7_days": {"days": 7, "price": 120, "label": "7 Days", "channel": "HASEENA(2.0)"},
+    "ch2_15_days": {"days": 15, "price": 199, "label": "15 Days", "channel": "HASEENA(2.0)"},
+    "ch2_30_days": {"days": 30, "price": 249, "label": "1 Month", "channel": "HASEENA(2.0)"},
+    "ch2_90_days": {"days": 90, "price": 499, "label": "3 Months", "channel": "HASEENA(2.0)"},
 }
 
-# Channel 3 Plans - SHEEP NEWS
+# Channel 3 Plans - SHEEP NEWS - UPDATED PRICING
 CHANNEL_3_PLANS = {
-    "ch3_7_days": {"days": 7, "price": 149, "label": "7 Days", "channel": "SHEEP NEWS"},
+    "ch3_7_days": {"days": 7, "price": 199, "label": "7 Days", "channel": "SHEEP NEWS"},
     "ch3_15_days": {"days": 15, "price": 249, "label": "15 Days", "channel": "SHEEP NEWS"},
-    "ch3_30_days": {"days": 30, "price": 320, "label": "1 Month", "channel": "SHEEP NEWS"},
+    "ch3_30_days": {"days": 30, "price": 349, "label": "1 Month", "channel": "SHEEP NEWS"},
+    "ch3_90_days": {"days": 90, "price": 799, "label": "3 Months", "channel": "SHEEP NEWS"},
 }
 
-# All-in-One Discount Plans (All 3 Channels)
+# All-in-One Discount Plans (All 3 Channels) - UPDATED PRICING
 ALL_IN_ONE_PLANS = {
+    "all_7_days": {"days": 7, "price": 499, "label": "7 Days", "channel": "ALL CHANNELS"},
     "all_15_days": {"days": 15, "price": 699, "label": "15 Days", "channel": "ALL CHANNELS"},
-    "all_30_days": {"days": 30, "price": 899, "label": "30 Days", "channel": "ALL CHANNELS"},
+    "all_30_days": {"days": 30, "price": 899, "label": "1 Month", "channel": "ALL CHANNELS"},
+    "all_90_days": {"days": 90, "price": 1499, "label": "3 Months", "channel": "ALL CHANNELS"},
 }
 
 # Combined PLANS dictionary for backward compatibility
@@ -105,8 +104,6 @@ PLANS = {
     **ALL_IN_ONE_PLANS,
 }
 
-# ==============================================
-# MESSAGES
 # ==============================================
 START_MESSAGE = """
 Hi {name}
@@ -135,7 +132,6 @@ PREMIUM PAYMENT
 Channel: {channel}
 Amount: Rs.{amount}
 Validity: {validity}
-Transaction ID: `{trx_id}`
 --------------------
 Scan QR with any UPI app to pay.
 
@@ -149,9 +145,11 @@ AFTER PAYMENT:
 """
 
 NOT_PREMIUM_MESSAGE = """
-PREMIUM REQUIRED
+♻️ PREMIUM ♻️
 
-You need premium to access this file.
-Click the button below to get premium!
+💎 ᴛʜɪs ᴄᴏɴᴛᴇɴᴛ ɪs ᴘʀᴇᴍɪᴜᴍ ᴏɴʟʏ.
+
+•  Pay and activate premium to get instant access.
+
+• Click the button below to get premium!
 """
-
